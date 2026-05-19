@@ -1,0 +1,107 @@
+================================================================================
+CHIFFRES CLÉS DU RAPPORT — BELGIQUE FLOOD CLIMADA MODEL
+Tous les intervalles sont des IC 90% sauf indication contraire.
+ZÉRO valeur sans source bibliographique identifiée.
+================================================================================
+
+--- CONTEXTE HISTORIQUE ---
+
+AAL baseline (2000-2020) :
+  Valeur : 216 M€/an [IC: 165–275 M€/an]
+  Source : Swiss Re Sigma (2023) — AAL inondations Europe de l'Ouest ~0.03-0.05% du PIB. Appliqué au PIB Belgique 550 Brd€ (Eurostat 2022). Confirmé par calibration EP sur Kreienkamp et al. (2021).
+
+Inondations juillet 2021 (catastrophe Vesdre/Meuse) :
+  Pertes assurées : 2,500 M€ (pertes assurées CONFIRMÉES)
+  Source : Assuralia (2021)
+  Pertes totales (est.) : 6,700 M€ [4 000–10 000 M€] (estimation)
+  Source : Assuralia (2021); Swiss Re Sigma (2023) — part assurée 35–40% (total estimé, non spécifique à l'événement)
+  Période de retour : ~1/400 ans dans le climat actuel [IC: 1/100–1/9000]
+  Source : Kreienkamp et al. (2021) WWA, DOI 10.25561/88185
+
+--- PROJECTIONS RCP (AAL à 2100, CC + croissance exposition) ---
+
+RCP 2.6 (Scénario d'atténuation forte (objectif < 2°C)) :
+  AAL 2100 : 1122 M€/an [IC 90%: 575–1573 M€/an]
+  Réchauffement : 1.0°C [0.3–1.7°C] vs 2000-2020
+  Facteur dommages : ×2.00 (CC seul)
+  Source : Dottori et al. (2018) [CC]; Winsemius et al. (2016) [exposition]; IPCC AR5 (2014)
+
+RCP 4.5 (Scénario de stabilisation intermédiaire) :
+  AAL 2100 : 1255 M€/an [IC 90%: 868–1710 M€/an]
+  Réchauffement : 1.8°C [1.1–2.6°C] vs 2000-2020
+  Facteur dommages : ×2.24 (CC seul)
+  Source : Dottori et al. (2018) [CC]; Winsemius et al. (2016) [exposition]; IPCC AR5 (2014)
+
+RCP 6.0 (Scénario de stabilisation tardive) :
+  AAL 2100 : 1311 M€/an [IC 90%: 902–1771 M€/an]
+  Réchauffement : 2.2°C [1.4–3.1°C] vs 2000-2020
+  Facteur dommages : ×2.34 (CC seul)
+  Source : Dottori et al. (2018) [CC]; Winsemius et al. (2016) [exposition]; IPCC AR5 (2014)
+
+RCP 8.5 (Scénario de référence sans atténuation (BAU)) :
+  AAL 2100 : 1492 M€/an [IC 90%: 1026–2071 M€/an]
+  Réchauffement : 3.7°C [2.6–4.8°C] vs 2000-2020
+  Facteur dommages : ×2.66 (CC seul)
+  Source : Dottori et al. (2018) [CC]; Winsemius et al. (2016) [exposition]; IPCC AR5 (2014)
+
+--- PML ET SCR PAR SCÉNARIO (2100) ---
+
+RCP 26 (2100) :
+  PML-200: 7,459 M€ | SCR: 6,338 M€
+  Source : Dottori (2018) [EP curve] + EIOPA (2014) [SCR approx.]
+
+RCP 45 (2100) :
+  PML-200: 8,347 M€ | SCR: 7,092 M€
+  Source : Dottori (2018) [EP curve] + EIOPA (2014) [SCR approx.]
+
+RCP 60 (2100) :
+  PML-200: 8,720 M€ | SCR: 7,409 M€
+  Source : Dottori (2018) [EP curve] + EIOPA (2014) [SCR approx.]
+
+RCP 85 (2100) :
+  PML-200: 9,921 M€ | SCR: 8,429 M€
+  Source : Dottori (2018) [EP curve] + EIOPA (2014) [SCR approx.]
+
+--- MESURES D'ADAPTATION ---
+
+Meilleure mesure (B/C ratio) :
+  Systèmes d'alerte précoce — B/C = 33.5× (VAN = 3,624 M€)
+  Source : Modèle CLIMDA (AAL × réduction) — ordres de grandeur Alfieri et al. (2016)
+
+--- FORMULES MATHÉMATIQUES UTILISÉES ---
+
+1. Projection des dommages (Dottori-interpolée) :
+   D_RCP(t) = D_baseline × [1 + Δ_damage(T_RCP(t))]
+   où T_RCP(t) = IPCC AR5 Table SPM.2 et Δ_damage interpolé depuis Dottori (2018)
+
+2. AAL = ∫₀¹ L(p) dp ≈ Σᵢ Lᵢ × (pᵢ₋₁ - pᵢ₊₁) / 2 (méthode trapèze)
+
+3. Fonctions d'impact CLIMADA :
+   Impact(I) = MDD(I) × PAA(I) × Valeur_exposée
+   MDD(I) = 1 / (1 + exp(-k(I - I₀))) — sigmoïde (Huizinga et al. 2017)
+
+4. SCR Nat-Cat (approx. Solvency II) :
+   SCR ≈ max(PML_200ans − AAL, 0)  [VaR 99.5%]
+   Source exacte : EIOPA (2014) Technical Specification, Section 7
+
+5. NPV adaptation (méthode ECA-CLIMADA) :
+   NPV = Σₜ [(B(t) - C(t)) / (1+r)^t]
+   r ∈ {0.03, 0.05} (CE 2014 Guide CBA)
+
+--- AVERTISSEMENTS SUR L'INCERTITUDE ---
+
+1. Les intervalles de confiance sont LARGES — c'est un résultat scientifique
+   (Alfieri et al. 2018 — divergence inter-modèles documentée)
+
+2. RCP 8.5 à 2100 (ΔT > 3°C) : extrapolation au-delà du domaine Dottori (2018)
+   → Incertitude considérablement accrue, à commenter explicitement
+
+3. Données historiques belges < 1990 : incomplètes (biais EM-DAT)
+   → Test Mann-Kendall appliqué sur 1990-2023 uniquement
+
+4. PIB utilisé comme proxy des actifs exposés : hypothèse simplificatrice
+   → Sous-estimation possible de l'exposition réelle du stock de capital
+
+5. Courbe EP plafonnée à T=1 000 ans (queue non calibrée GPD/GEV)
+   → Extrapolations au-delà non justifiées sans modèle de queue explicite
+

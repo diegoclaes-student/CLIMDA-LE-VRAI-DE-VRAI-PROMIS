@@ -1,0 +1,9 @@
+Année,Mois,Événement,Décès,Pertes totales (M€),Pertes assurées (M€),Source,Note
+1993,1,Inondations Meuse/Moselle,3,450,?,EM-DAT (CRED/UCLouvain),Valeur non corrigée pour l'inflation — valeur 1993.
+1995,1,Inondations Meuse (crue centennale),3,700,200,EM-DAT (CRED/UCLouvain); Swiss Re Sigma (1996),ESTIMATED — conversion USD→EUR approximative; valeur non corrigée inflation.
+1998,11,Inondations Namur/Liège,1,120,?,EM-DAT (CRED/UCLouvain),Événement mineur; données partielles.
+2002,1,Inondations Meuse/Wallonie,0,250,?,EM-DAT (CRED/UCLouvain),Données partielles dans EM-DAT.
+2010,11,Inondations automnales (multi-bassins),1,400,120,EM-DAT (CRED/UCLouvain); Swiss Re Sigma (2011),ESTIMATED pour les pertes assurées.
+2016,5,"Inondations printemps (Liège, Namur)",0,150,?,EM-DAT (CRED/UCLouvain),Données partielles.
+2021,7,"Catastrophe Vesdre/Meuse (Liège, Namur)",42,"6,700","2,500",Assuralia (2021); Kreienkamp et al. (2021) WWA; EM-DAT,Pertes assurées = 2 500 M€ CONFIRMÉES (Assuralia). Pertes totales ESTIMÉES entre 4 000–10 000 M€ selon périmètre. Valeur centrale 6 700 M€ basée sur part assurée nat-cat 35–40% (Swiss Re Sigma 2023) — estimation non spécifique à l'événement. Période de retour climatique : ~1/400 ans selon Kreienkamp et al. (2021).
+1990–2023,—,AAL historique moyen (estimation),—,216 [165–275],~81,Swiss Re Sigma (2023) — AAL inondations Europe de l'Ouest ~0.03-0.05% du PIB. Appliqué au PIB Belgique 550 Brd€ (Eurostat 2022). Confirmé par calibration EP sur Kreienkamp et al. (2021).,"AAL = Pertes Annuelles Moyennes — estimation, pas un événement unique"
