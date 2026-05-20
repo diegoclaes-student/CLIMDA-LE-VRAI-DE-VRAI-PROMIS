@@ -1,0 +1,30 @@
+# Large raster data files (JRC GeoTIFFs — too large for git, >260 MB each)
+eu_rp/*.tif
+data/jrc_inputs/*.tif
+
+# Python cache
+__pycache__/
+*.pyc
+*.pyo
+
+# macOS metadata
+.DS_Store
+
+# Generated cache (intermediate outputs)
+outputs_generated/cache/
+
+# Jupyter checkpoints
+.ipynb_checkpoints/
+
+# Virtual environments
+.venv/
+venv/
+env/
+
+# IDE settings
+.vscode/
+.idea/
+
+# Secrets / credentials
+*.env
+.env

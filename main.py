@@ -55,6 +55,9 @@ def check_dependencies():
         "pandas":     "RECOMMANDÉ (export CSV)",
         "geopandas":  "OPTIONNEL (cartes précises — fallback sur bulles matplotlib)",
         "statsmodels":"OPTIONNEL (analyses statistiques supplémentaires)",
+        "rasterio":   "OPTIONNEL (pipeline JRC hazard)",
+        "shapely":    "OPTIONNEL (pipeline JRC hazard)",
+        "pyarrow":    "OPTIONNEL (export Parquet JRC)",
     }
     all_ok = True
     for pkg, requirement in deps.items():
@@ -168,12 +171,13 @@ def main():
         description="CLIMADA Belgium Flood Risk Model — UCLouvain LACTU2000",
         formatter_class=argparse.RawDescriptionHelpFormatter,
         epilog="""
-Exemples :
-  python main.py --all           # tout générer
-  python main.py --summary       # résumé + bibliographie uniquement
-  python main.py --tables        # tableaux uniquement
-  python main.py --charts        # graphiques uniquement
-  python main.py --maps          # cartes uniquement
+    Exemples :
+      python main.py --all           # tout générer
+      python main.py --summary       # résumé + bibliographie uniquement
+      python main.py --tables        # tableaux uniquement
+      python main.py --charts        # graphiques uniquement
+      python main.py --maps          # cartes uniquement
+      python main.py --jrc           # pipeline raster JRC (hazard)
         """,
     )
     parser.add_argument("--all",     action="store_true", help="Générer tous les outputs")
@@ -182,6 +186,7 @@ Exemples :
     parser.add_argument("--tables",  action="store_true", help="Tableaux (1–3) + CSV + LaTeX")
     parser.add_argument("--summary", action="store_true", help="Résumé rapport + bibliographie BibTeX")
     parser.add_argument("--validate",action="store_true", help="Validation des paramètres uniquement")
+    parser.add_argument("--jrc",     action="store_true", help="Pipeline raster JRC (aléa inondation)")
 
     args = parser.parse_args()
 
@@ -197,6 +202,11 @@ Exemples :
 
     if args.all:
         run_all()
+        return
+
+    if args.jrc:
+        from data.jrc_hazard_pipeline import run_jrc_pipeline
+        run_jrc_pipeline()
         return
 
     os.makedirs(os.path.join(project_root, "outputs_generated", "figures"), exist_ok=True)

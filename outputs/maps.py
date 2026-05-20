@@ -9,6 +9,7 @@
 
 import os
 import numpy as np
+import pandas as pd
 import warnings
 warnings.filterwarnings("ignore")
 
@@ -31,6 +32,11 @@ from models.exposure_model import get_exposed_value_by_province
 from data.rcp_scenarios import SCENARIOS, get_warming_at_year, get_damage_factor
 
 OUTPUT_DIR = os.path.join(os.path.dirname(__file__), "..", "outputs_generated", "figures")
+OUTPUT_ROOT = os.path.join(os.path.dirname(__file__), "..", "outputs_generated")
+CACHE_DIR = os.path.join(OUTPUT_ROOT, "cache")
+ALEA_GPKG_PATH = os.path.join(
+    os.path.dirname(__file__), "..", "ALEA_GEOPACKAGE_31370", "ALEA.gpkg"
+)
 
 # ---------------------------------------------------------------------------
 # Correspondance noms Natural Earth → noms du modèle
@@ -214,6 +220,72 @@ def _add_source_fig(fig, text: str, y: float = 0.01):
         ha="center", va="bottom", fontsize=5.8,
         style="italic", color="#444444",
     )
+
+
+def _load_alea_coverage_by_province() -> pd.DataFrame | None:
+    """
+    Calcule la part de surface provinciale couverte par l'aléa inondation
+    (ALEA.gpkg, millésime 2020) et met en cache le résultat.
+    """
+    if not os.path.exists(ALEA_GPKG_PATH):
+        return None
+
+    os.makedirs(CACHE_DIR, exist_ok=True)
+    cache_path = os.path.join(CACHE_DIR, "alea_province_coverage.csv")
+    if os.path.exists(cache_path):
+        return pd.read_csv(cache_path)
+
+    alea = gpd.read_file(
+        ALEA_GPKG_PATH,
+        layer="ALEA_INOND__ALEA",
+        columns=["VALEUR", "geometry"],
+    )
+    alea = alea[alea["VALEUR"].notna()].copy()
+    alea = alea.to_crs("EPSG:31370")
+
+    # Dissoudre par classe d'aléa pour réduire la complexité
+    alea_dissolved = alea.dissolve(by="VALEUR")
+
+    geo = _load_geodata()
+    prov = geo["be_prov"].to_crs("EPSG:31370")
+
+    value_map = {
+        "Aléa très faible": "tres_faible",
+        "Aléa faible": "faible",
+        "Aléa moyen": "moyen",
+        "Aléa élevé": "eleve",
+    }
+
+    results = []
+    for _, row in prov.iterrows():
+        ne_name = row["name"]
+        model_name = NE_TO_MODEL.get(ne_name, ne_name) or "Limburg"
+        geom = row.geometry
+        prov_area = geom.area
+
+        class_areas = {k: 0.0 for k in value_map.values()}
+        for alea_value, geom_val in alea_dissolved.geometry.items():
+            key = value_map.get(alea_value)
+            if key is None or geom_val is None or geom_val.is_empty:
+                continue
+            inter = geom_val.intersection(geom)
+            if not inter.is_empty:
+                class_areas[key] += inter.area
+
+        row_data = {
+            "province": model_name,
+            "area_m2": prov_area,
+        }
+        for k, area in class_areas.items():
+            row_data[f"alea_{k}_pct"] = (area / prov_area * 100.0) if prov_area > 0 else 0.0
+        row_data["alea_moyen_eleve_pct"] = (
+            row_data["alea_moyen_pct"] + row_data["alea_eleve_pct"]
+        )
+        results.append(row_data)
+
+    df = pd.DataFrame(results)
+    df.to_csv(cache_path, index=False)
+    return df
 
 
 # ---------------------------------------------------------------------------
@@ -480,43 +552,54 @@ def plot_map_B(save: bool = True):
 
 
 # ---------------------------------------------------------------------------
-# CARTE C — Aléa actuel (fréquence historique)
+# CARTE C — Aléa actuel
 # ---------------------------------------------------------------------------
 
 def plot_map_C(save: bool = True):
     """
-    Carte C : Fréquence historique des inondations (événements/décennie).
+    Carte C : Aléa inondation (ALEA 2020) ou, en fallback, fréquence historique.
     Choroplèthe + tracé des bassins versants.
 
-    SOURCE données : EM-DAT (CRED/UCLouvain) 1990-2023
+    SOURCE données : ALEA inondation (SPW, 2020) ou EM-DAT (CRED/UCLouvain) 1990-2023
     SOURCE géo : Natural Earth 10m, CC0
     """
     geo = _load_geodata()
 
-    # Valeur pour Limbourg (non dans le modèle principal)
-    freq_dict = {pname: d["freq_events_per_decade"]
-                 for pname, d in PROVINCE_HAZARD.items()}
+    alea_df = _load_alea_coverage_by_province()
+    use_alea = alea_df is not None and not alea_df.empty
+    if use_alea:
+        coverage = dict(zip(alea_df["province"], alea_df["alea_moyen_eleve_pct"]))
+    else:
+        # Valeur pour Limbourg (non dans le modèle principal)
+        coverage = {pname: d["freq_events_per_decade"]
+                    for pname, d in PROVINCE_HAZARD.items()}
 
     gdf = geo["be_prov"].copy()
     vals = []
     for _, row in gdf.iterrows():
         ne_name    = row["name"]
-        model_name = NE_TO_MODEL.get(ne_name)
-        if model_name and model_name in freq_dict:
-            vals.append(freq_dict[model_name])
+        model_name = NE_TO_MODEL.get(ne_name, ne_name)
+        if model_name is None:
+            model_name = "Limburg"
+        if model_name in coverage:
+            vals.append(coverage[model_name])
         else:
-            vals.append(LIMBURG_DATA["freq_events_per_decade"])
+            vals.append(0.0 if use_alea else LIMBURG_DATA["freq_events_per_decade"])
     gdf["freq"] = vals
 
     fig, ax = plt.subplots(figsize=(11, 9))
     fig.suptitle(
+        "Carte C — Aléa inondation (ALEA 2020)\n"
+        "Part de surface provinciale en aléa moyen+élevé (%)"
+        if use_alea else
         "Carte C — Aléa actuel : Fréquence historique des inondations significatives\n"
         "par province belge (événements majeurs/décennie, 1990–2023)",
         fontsize=12, fontweight="bold",
     )
 
     cmap = mcm.get_cmap("Blues")
-    norm = Normalize(vmin=0, vmax=4.0)
+    vmax = max(coverage.values()) if coverage else 4.0
+    norm = Normalize(vmin=0, vmax=max(4.0, vmax))
 
     _setup_map_ax(ax, "", fontsize=11)
     _draw_context(ax, geo)
@@ -547,8 +630,12 @@ def plot_map_C(save: bool = True):
     sm.set_array([])
     cbar = fig.colorbar(sm, ax=ax, orientation="vertical",
                         fraction=0.03, pad=0.02, shrink=0.8)
-    cbar.set_label("Fréquence (événements majeurs/décennie)\n1990–2023 — Source : EM-DAT/CRED",
-                   fontsize=9)
+    cbar.set_label(
+        "Surface en aléa moyen+élevé (%)\nALEA 2020 (SPW)"
+        if use_alea else
+        "Fréquence (événements majeurs/décennie)\n1990–2023 — Source : EM-DAT/CRED",
+        fontsize=9,
+    )
     cbar.ax.tick_params(labelsize=8)
 
     # Légende rivières
@@ -558,10 +645,17 @@ def plot_map_C(save: bool = True):
 
     _add_source_fig(
         fig,
-        "Sources données : EM-DAT/CRED (UCLouvain), https://www.emdat.be, 1990–2023  ·  "
-        "Service Public de Wallonie (SPW) — bassins versants  ·  "
-        "Sources géo : Natural Earth 10m admin-1 + rivers_lake_centerlines (CC0)  ·  "
-        "ATTENTION : données EM-DAT incomplètes avant 1990",
+        (
+            "Sources données : ALEA inondation (SPW, millésime 2020, GPKG 31370)  ·  "
+            "Service Public de Wallonie (SPW) — bassins versants  ·  "
+            "Sources géo : Natural Earth 10m admin-1 + rivers_lake_centerlines (CC0)"
+        ) if use_alea else
+        (
+            "Sources données : EM-DAT/CRED (UCLouvain), https://www.emdat.be, 1990–2023  ·  "
+            "Service Public de Wallonie (SPW) — bassins versants  ·  "
+            "Sources géo : Natural Earth 10m admin-1 + rivers_lake_centerlines (CC0)  ·  "
+            "ATTENTION : données EM-DAT incomplètes avant 1990"
+        ),
         y=0.01,
     )
 
@@ -579,21 +673,41 @@ def plot_map_C(save: bool = True):
 
 def plot_map_D(save: bool = True):
     """
-    Carte D : Valeur économique exposée (Mrd€) et % PIB en zone Q100 (proxy).
+    Carte D : Valeur économique exposée (Mrd€) et % PIB en zone d'aléa (ALEA 2020),
+    avec fallback Q100 (proxy) si ALEA non disponible.
     Choroplèthe à double panneau.
 
     SOURCE PIB : Eurostat (2022) NUTS3
-    SOURCE zones Q100 : VMM (Flandre); PGRI 2022 SPW (Wallonie)
+    SOURCE aléa : SPW (ALEA inondation, millésime 2020)
+    SOURCE zones Q100 (fallback) : VMM (Flandre); PGRI 2022 SPW (Wallonie)
     SOURCE géo : Natural Earth 10m admin-1, CC0
     """
     geo = _load_geodata()
-    exposure = get_exposed_value_by_province(year=2020)
+    alea_df = _load_alea_coverage_by_province()
+    use_alea = alea_df is not None and not alea_df.empty
 
-    exposed_beur = {p: v["exposed_value_BEUR"] for p, v in exposure.items()}
-    flood_pct    = {p: PROVINCES[p]["flood_zone_pct_Q100"] for p in PROVINCES}
+    if use_alea:
+        flood_pct = dict(zip(alea_df["province"], alea_df["alea_moyen_eleve_pct"]))
+        from data.rcp_scenarios import EXPOSURE_GROWTH_RATE_ANNUAL
+        exposed_beur = {}
+        for prov, data in PROVINCES.items():
+            gdp_year = data["gdp_BEUR"] * (1 + EXPOSURE_GROWTH_RATE_ANNUAL) ** 0
+            flood_frac = flood_pct.get(prov, 0.0) / 100.0
+            exposed_beur[prov] = gdp_year * flood_frac
+        if "Limburg" in flood_pct:
+            exposed_beur["Limburg"] = (
+                LIMBURG_DATA["gdp_BEUR"] * flood_pct["Limburg"] / 100.0
+            )
+    else:
+        exposure = get_exposed_value_by_province(year=2020)
+        exposed_beur = {p: v["exposed_value_BEUR"] for p, v in exposure.items()}
+        flood_pct    = {p: PROVINCES[p]["flood_zone_pct_Q100"] for p in PROVINCES}
 
     fig, axes = plt.subplots(1, 2, figsize=(18, 8))
     fig.suptitle(
+        "Carte D — Exposition économique en zone d'aléa inondation (ALEA 2020)\n"
+        "Valeur absolue (Mrd€) et part du PIB provincial exposée (%, 2020)"
+        if use_alea else
         "Carte D — Exposition économique en zone inondable (Q100, proxy) par province belge\n"
         "Valeur absolue (Mrd€) et part du PIB provincial exposée (%, 2020)",
         fontsize=12, fontweight="bold",
@@ -601,15 +715,21 @@ def plot_map_D(save: bool = True):
 
     # --- Panneau gauche : valeur absolue Mrd€ ---
     ax = axes[0]
-    ax.set_title("Valeur exposée (Mrd€)\n[PIB provincial × fraction Q100 (proxy)]",
-                 fontsize=10, fontweight="bold")
+    ax.set_title(
+        "Valeur exposée (Mrd€)\n[PIB provincial × fraction aléa moyen+élevé]"
+        if use_alea else
+        "Valeur exposée (Mrd€)\n[PIB provincial × fraction Q100 (proxy)]",
+        fontsize=10, fontweight="bold",
+    )
 
     gdf_left = geo["be_prov"].copy()
     vals_left = []
     for _, row in gdf_left.iterrows():
         ne_name    = row["name"]
-        model_name = NE_TO_MODEL.get(ne_name)
-        if model_name and model_name in exposed_beur:
+        model_name = NE_TO_MODEL.get(ne_name, ne_name)
+        if model_name is None:
+            model_name = "Limburg"
+        if model_name in exposed_beur:
             vals_left.append(exposed_beur[model_name])
         else:
             vals_left.append(LIMBURG_DATA["gdp_BEUR"] * LIMBURG_DATA["flood_zone_pct_Q100"] / 100)
@@ -632,19 +752,30 @@ def plot_map_D(save: bool = True):
     sm1.set_array([])
     cbar1 = fig.colorbar(sm1, ax=ax, orientation="vertical",
                          fraction=0.04, pad=0.02, shrink=0.8)
-    cbar1.set_label("Valeur exposée (Mrd€)\n[PIB × fraction Q100 (proxy)]", fontsize=9)
+    cbar1.set_label(
+        "Valeur exposée (Mrd€)\n[PIB × aléa moyen+élevé]"
+        if use_alea else
+        "Valeur exposée (Mrd€)\n[PIB × fraction Q100 (proxy)]",
+        fontsize=9,
+    )
 
     # --- Panneau droit : % du PIB en zone Q100 ---
     ax = axes[1]
-    ax.set_title("Part du PIB provincial en zone Q100 (%)\n[Fraction en zone inondable centennale (proxy)]",
-                 fontsize=10, fontweight="bold")
+    ax.set_title(
+        "Part du PIB provincial en aléa moyen+élevé (%)\n[ALEA 2020]"
+        if use_alea else
+        "Part du PIB provincial en zone Q100 (%)\n[Fraction en zone inondable centennale (proxy)]",
+        fontsize=10, fontweight="bold",
+    )
 
     gdf_right = geo["be_prov"].copy()
     vals_right = []
     for _, row in gdf_right.iterrows():
         ne_name    = row["name"]
-        model_name = NE_TO_MODEL.get(ne_name)
-        if model_name and model_name in flood_pct:
+        model_name = NE_TO_MODEL.get(ne_name, ne_name)
+        if model_name is None:
+            model_name = "Limburg"
+        if model_name in flood_pct:
             vals_right.append(flood_pct[model_name])
         else:
             vals_right.append(LIMBURG_DATA["flood_zone_pct_Q100"])
@@ -667,14 +798,26 @@ def plot_map_D(save: bool = True):
     sm2.set_array([])
     cbar2 = fig.colorbar(sm2, ax=ax, orientation="vertical",
                          fraction=0.04, pad=0.02, shrink=0.8)
-    cbar2.set_label("Zone inondable Q100 (% superficie, proxy)\nVMM (Fl.) / PGRI-SPW (Wal.)", fontsize=9)
+    cbar2.set_label(
+        "Surface en aléa moyen+élevé (% superficie)\nALEA 2020 (SPW)"
+        if use_alea else
+        "Zone inondable Q100 (% superficie, proxy)\nVMM (Fl.) / PGRI-SPW (Wal.)",
+        fontsize=9,
+    )
 
     _add_source_fig(
         fig,
-        "Sources PIB : Eurostat (2022) NUTS3 Regional GDP (estimation)  ·  "
-        "Zones inondables Q100 : VMM (Flandre) ; Plan de Gestion du Risque d'Inondation 2022 (SPW, Wallonie)  ·  "
-        "Géo : Natural Earth 10m (CC0)  ·  "
-        "NOTE : PIB = proxy de la valeur des actifs exposés ; fractions Q100 simplifiées (pas des cartes officielles)",
+        (
+            "Sources PIB : Eurostat (2022) NUTS3 Regional GDP (estimation)  ·  "
+            "ALEA inondation : SPW (millésime 2020, GPKG 31370)  ·  "
+            "Géo : Natural Earth 10m (CC0)  ·  "
+            "NOTE : PIB = proxy de la valeur des actifs exposés ; aléa moyen+élevé utilisé"
+        ) if use_alea else
+        (
+            "Zones inondables Q100 : VMM (Flandre) ; Plan de Gestion du Risque d'Inondation 2022 (SPW, Wallonie)  ·  "
+            "Géo : Natural Earth 10m (CC0)  ·  "
+            "NOTE : PIB = proxy de la valeur des actifs exposés ; fractions Q100 simplifiées (pas des cartes officielles)"
+        ),
         y=0.00,
     )
 

@@ -149,6 +149,37 @@ SOURCES = {
     },
 
     # -------------------------------------------------------------------------
+    # DONNEES GEO / ALEA JRC COPERNICUS
+    # -------------------------------------------------------------------------
+    "jrc_flood_hazard_v3_1_1": {
+        "key": "jrc_flood_hazard_v3_1_1",
+        "authors": "JRC Copernicus (CEMS/EFAS)",
+        "year": 2021,
+        "title": "River flood hazard maps for Europe and the Mediterranean Basin region (v3.1.1)",
+        "publisher": "European Commission Joint Research Centre",
+        "url": "https://jeodpp.jrc.ec.europa.eu/ftp/jrc-opendata/CEMS-EFAS/flood_hazard/",
+        "note": "GeoTIFFs at 3 arc-second (~90 m), WGS84 EPSG:4326.",
+    },
+    "gadm_4_1": {
+        "key": "gadm_4_1",
+        "authors": "GADM",
+        "year": 2022,
+        "title": "GADM database of Global Administrative Areas (v4.1)",
+        "publisher": "GADM",
+        "url": "https://gadm.org/",
+        "note": "Boundaries for provinces (ADM1) and communes (ADM3), Belgium.",
+    },
+    "hydrobasins_v1c": {
+        "key": "hydrobasins_v1c",
+        "authors": "Lehner, B., Grill, G.",
+        "year": 2013,
+        "title": "HydroBASINS (HydroSHEDS) v1c",
+        "publisher": "World Wildlife Fund",
+        "url": "https://www.hydrosheds.org/products/hydrobasins",
+        "note": "Level 6 basins used for Meuse/Escaut delineation (EU subset).",
+    },
+
+    # -------------------------------------------------------------------------
     # ATTRIBUTION ET ÉVÉNEMENTS EXTRÊMES
     # -------------------------------------------------------------------------
     "kreienkamp2021": {
